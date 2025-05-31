@@ -1,0 +1,87 @@
+*vimnc.txt*  VimNC file manager plugin for Vim
+
+==============================================================================
+INTRODUCTION                                                       *vimnc*
+
+VimNC is a simple and intuitive file manager plugin for Vim that allows you to
+navigate and manage your files directly within Vim.
+
+==============================================================================
+FEATURES                                                           *vimnc-features*
+
+- Navigate the filesystem with Vim-style keys
+- Open files quickly
+- Select, cut, copy, paste, and delete files/folders
+- Create folders and rename files/folders
+- Toggle an in-editor help screen for quick reference
+
+==============================================================================
+KEYBINDINGS                                                        *vimnc-keybindings*
+
+The following keys are used within VimNC:
+
+  h / j / k / l      Navigate filesystem (left/down/up/right)
+  Enter              Open file
+  Space              Select / unselect files/folders
+  x                  Cut selected items
+  y                  Copy selected items
+  p                  Paste items
+  d                  Delete selected items
+  a                  Create a new folder
+  c                  Rename a file or folder
+  ?                  Toggle this help screen
+
+==============================================================================
+INSTALLATION                                                       *vimnc-install*
+
+You can install this plugin using your favorite plugin manager.
+
+Using vim-plug:
+
+    Plug 'yourusername/vim-file-manager'
+
+Then run:
+
+    :PlugInstall
+
+Using Vundle:
+
+    Plugin 'yourusername/vim-file-manager'
+
+Then run:
+
+    :PluginInstall
+
+==============================================================================
+USAGE                                                              *vimnc-usage*
+
+Open the VimNC file manager with the command:
+
+    :VimNC
+
+Navigate and manage your files using the keys listed above. Press `?` anytime
+to toggle the help screen.
+
+To make opening VimNC even quicker, you can map the command to a convenient
+key combination. For example, to map it to <Leader>f, add the following to
+your .vimrc or init.vim:
+
+> 
+    " Map <leader>f to open VimNC file manager
+    nnoremap <leader>f :VimNC<CR>
+<
+
+==============================================================================
+CONTRIBUTING                                                       *vimnc-contributing*
+
+Contributions are welcome! Feel free to open issues or submit pull requests.
+
+==============================================================================
+LICENSE                                                            *vimnc-license*
+
+MIT License © Mahadevan K
+
+==============================================================================
+
+vim:tw=78:ts=8:ft=help:norl:
+
