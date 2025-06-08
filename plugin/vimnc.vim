@@ -1,4 +1,5 @@
 " File: ~/.vim/plugin/vfm.vim
+"
 if exists("g:loaded_vfm")
   finish
 endif
@@ -36,6 +37,9 @@ function! s:refresh_dir()
 
   setlocal modifiable
 
+  if fnamemodify(b:current_dir, ':h') !=# b:current_dir
+    call add(l:lines,'^ '.b:current_dir)
+  endif
   for f in l:files
     let l:perm = getfperm(f)
     let l:size = getfsize(f)
@@ -44,13 +48,12 @@ function! s:refresh_dir()
     else
       let l:size_str = s:human_readable_size(size)
     endif
+    let l:ftypechar=''
     if isdirectory(f)
-      let l:ftypechar="/"
-    else
-      let l:ftypechar="-"
+      let l:ftypechar='/'
     endif
     let l:name = fnamemodify(f, ':t')
-    call add(l:lines, printf('%s %8s %s %s', l:perm, l:size_str, l:ftypechar, l:name))
+    call add(l:lines, printf('%s %8s %s%s', l:perm, l:size_str, l:name, l:ftypechar))
   endfor
 
   %delete _
@@ -61,6 +64,7 @@ function! s:refresh_dir()
   setlocal noswapfile
   setlocal nowrap
   setlocal nomodifiable
+  echo 'type ? for help'
 endfunction
 
 command! VimNC call s:open_file_manager()
@@ -125,10 +129,6 @@ function! s:open_file_manager()
   nnoremap <buffer> c :call <SID>rename()<CR>
   nnoremap <buffer> ? :call <SID>show_help()<CR>
   nnoremap <buffer> <CR> :call <SID>open_file()<CR>
- 
-  execute 'autocmd WinLeave <buffer> call <SID>leave_buffer()'
-
-  echo "type ? for help"
 endfunction
 
 function! s:join_path(dir, file)
@@ -137,8 +137,11 @@ endfunction
 
 function! s:get_cursor_path()
   let l:line = getline('.')
+  if l:line =~ '^\^'
+    return fnamemodify(substitute(b:current_dir, '/\+$','',''), ':h')
+  endif
   let l:parts = split(l:line)
-  let l:filename = join(l:parts[3:],' ')
+  let l:filename = substitute(join(l:parts[2:],' '),'/\+$','','')
   return fnamemodify(s:join_path(b:current_dir,l:filename), ':p')
 endfunction
 
@@ -349,6 +352,11 @@ endfunction
 " open fie/folder
 function! s:open_file()
   let l:path = s:get_cursor_path()
-  set splitright
-  execute 'vsplit' fnameescape(l:path)
+  if isdirectory(l:path) 
+    let b:current_dir = l:path
+    call s:refresh_dir()
+  else
+    set splitright
+    execute 'vsplit' fnameescape(l:path)
+  endif
 endfunction

@@ -14,8 +14,11 @@ A simple and intuitive file manager plugin for Vim that allows you to navigate a
 
 | Key      | Action                  |
 |----------|-------------------------|
-| `h` / `j` / `k` / `l` | Navigate filesystem (left/down/up/right) |
-| `Enter`  | Open file               |
+| `h`      | Go to parent folder |
+| `l`      | Go into folder |
+| `j`      | Move down the list |
+| `k`      | Move up the list |
+| `Enter`  | Open file/folder               |
 | `Space`  | Select / unselect files/folders |
 | `x`      | Cut selected items      |
 | `y`      | Copy selected items     |
