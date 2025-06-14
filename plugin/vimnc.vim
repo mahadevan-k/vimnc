@@ -1,9 +1,9 @@
-" File: ~/.vim/plugin/vfm.vim
+" File: ~/.vim/plugin/vimnc.vim
 "
-if exists("g:loaded_vfm")
+if exists("g:loaded_vimnc")
   finish
 endif
-let g:loaded_vfm = 1
+let g:loaded_vimnc = 1
 
 
 highlight VNCSelected ctermfg=yellow guifg=Yellow
@@ -32,13 +32,14 @@ endfunction
 
 function! s:refresh_dir()
   let b:current_dir = fnamemodify(b:current_dir, ':p')
-  let l:files = glob(s:join_path(b:current_dir,'/*'), 0, 1)
+  let b:current_dir = substitute(b:current_dir, '/', '\\', 'g')
+  let l:files = glob(b:current_dir . '\*', 0, 1)
   let l:lines = []
 
   setlocal modifiable
 
   if fnamemodify(b:current_dir, ':h') !=# b:current_dir
-    call add(l:lines,'^ '.b:current_dir)
+    call add(l:lines,'^ ..')
   endif
   for f in l:files
     let l:perm = getfperm(f)
@@ -46,12 +47,9 @@ function! s:refresh_dir()
     if l:size < 0
       let l:size_str = '?'
     else
-      let l:size_str = s:human_readable_size(size)
+      let l:size_str = s:human_readable_size(l:size)
     endif
-    let l:ftypechar=''
-    if isdirectory(f)
-      let l:ftypechar='/'
-    endif
+    let l:ftypechar = isdirectory(f) ? '\' : ''
     let l:name = fnamemodify(f, ':t')
     call add(l:lines, printf('%s %8s %s%s', l:perm, l:size_str, l:name, l:ftypechar))
   endfor
@@ -105,7 +103,7 @@ endfunction
 
 function! s:open_file_manager()
   vnew
-  setlocal filetype=vfm
+  setlocal filetype=vimnc
   let b:current_dir = getcwd()
   let b:selection = {}
   let b:selection_matches = {}
@@ -132,17 +130,25 @@ function! s:open_file_manager()
 endfunction
 
 function! s:join_path(dir, file)
-  return substitute(a:dir, '/\+$', '', '') . '/' . substitute(a:file, '^/\+', '', '')
+  " Convert all slashes to backslashes on Windows
+  let l:dir = substitute(a:dir, '/', '\\', 'g')
+  let l:file = substitute(a:file, '/', '\\', 'g')
+  return substitute(l:dir, '\\\+$', '', '') . '\' . substitute(l:file, '^\\\+', '', '')
 endfunction
 
 function! s:get_cursor_path()
   let l:line = getline('.')
-  if l:line =~ '^\^'
-    return fnamemodify(substitute(b:current_dir, '/\+$','',''), ':h')
+  if l:line =~ '^\^ \.\.$'  " Match exactly '^ ..'
+    let l:current_dir = substitute(b:current_dir, '\\\+$', '', '')
+    return substitute(l:current_dir, '\\[^\\]\+$', '', '')
+  endif
+  if l:line =~ '^>'
+    return b:current_dir
   endif
   let l:parts = split(l:line)
-  let l:filename = substitute(join(l:parts[2:],' '),'/\+$','','')
-  return fnamemodify(s:join_path(b:current_dir,l:filename), ':p')
+  let l:filename = substitute(join(l:parts[2:],' '),'[/\\]\+$','','')
+  let l:path = s:join_path(b:current_dir, l:filename)
+  return fnamemodify(l:path, ':p')
 endfunction
 
 
@@ -159,8 +165,9 @@ endfunction
 " Go up to parent
 function! s:go_up()
   call s:clear_selection()
-  let l:clean_dir = substitute(b:current_dir, '/\+$', '', '')
-  let b:current_dir = fnamemodify(l:clean_dir, ':h')
+  let l:clean_dir = substitute(b:current_dir, '\\\+$', '', '')
+  let l:parent_dir = substitute(l:clean_dir, '\\[^\\]\+$', '', '')
+  let b:current_dir = l:parent_dir
   call s:refresh_dir()
 endfunction
 
@@ -236,7 +243,7 @@ function! s:paste_selection()
     echo "Nothing to paste"
     return
   endif
-  let l:path=substitute(l:buffer[0],'/\+$','','')
+  let l:path=substitute(l:buffer[0],'[/\\]\+$','','')
   if l:path==s:join_path(b:current_dir,fnamemodify(l:path,':t'))
     echo "Nothing to do, same location!"
     return
@@ -288,7 +295,7 @@ function! s:create_folder()
     return
   endif
 
-  let l:new_path = b:current_dir . '/' . l:folder_name
+  let l:new_path = b:current_dir . '\' . l:folder_name
 
   if isdirectory(l:new_path) || filereadable(l:new_path)
     echohl ErrorMsg
@@ -323,7 +330,7 @@ function! s:rename()
     return
   endif
 
-  let l:new_path = b:current_dir . '/' . l:file_name
+  let l:new_path = b:current_dir . '\' . l:file_name
 
   if isdirectory(l:new_path) || filereadable(l:new_path)
     echohl ErrorMsg
@@ -349,10 +356,10 @@ function! s:rename()
   endtry
 endfunction
 
-" open fie/folder
+" open file/folder
 function! s:open_file()
   let l:path = s:get_cursor_path()
-  if isdirectory(l:path) 
+  if isdirectory(l:path)
     let b:current_dir = l:path
     call s:refresh_dir()
   else
