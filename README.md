@@ -35,7 +35,7 @@ You can install this plugin using your favorite plugin manager:
 
 ### Using [vim-plug](https://github.com/junegunn/vim-plug):
 
-    Plug 'yourusername/vim-file-manager'
+    Plug 'mahadevan-k/vimnc'
 
 Then run:
 
@@ -43,7 +43,7 @@ Then run:
 
 ### Using [Vundle](https://github.com/VundleVim/Vundle.vim):
 
-    Plugin 'yourusername/vim-file-manager'
+    Plugin 'mahadevan-k/vimnc'
 
 Then run:
 
