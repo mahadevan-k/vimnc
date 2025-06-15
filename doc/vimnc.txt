@@ -29,6 +29,7 @@ The following keys are used within VimNC:
   d                  Delete selected items
   a                  Create a new folder
   c                  Rename a file or folder
+  r                  Refresh directory
   ?                  Toggle this help screen
 
 ==============================================================================
@@ -38,7 +39,7 @@ You can install this plugin using your favorite plugin manager.
 
 Using vim-plug:
 
-    Plug 'yourusername/vim-file-manager'
+    Plug 'mahadevan-k/vimnc'
 
 Then run:
 
@@ -46,7 +47,7 @@ Then run:
 
 Using Vundle:
 
-    Plugin 'yourusername/vim-file-manager'
+    Plugin 'mahadevan-k/vimnc'
 
 Then run:
 
@@ -66,7 +67,7 @@ To make opening VimNC even quicker, you can map the command to a convenient
 key combination. For example, to map it to <Leader>f, add the following to
 your .vimrc or init.vim:
 
-> 
+>
     " Map <leader>f to open VimNC file manager
     nnoremap <leader>f :VimNC<CR>
 <
@@ -84,4 +85,3 @@ MIT License © Mahadevan K
 ==============================================================================
 
 vim:tw=78:ts=8:ft=help:norl:
-
