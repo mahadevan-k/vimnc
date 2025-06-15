@@ -12,21 +12,22 @@ A simple and intuitive file manager plugin for Vim that allows you to navigate a
 
 ## Keybindings
 
-| Key      | Action                  |
-|----------|-------------------------|
-| `h`      | Go to parent folder |
-| `l`      | Go into folder |
-| `j`      | Move down the list |
-| `k`      | Move up the list |
-| `Enter`  | Open file/folder               |
-| `Space`  | Select / unselect files/folders |
-| `x`      | Cut selected items      |
-| `y`      | Copy selected items     |
-| `p`      | Paste items             |
-| `d`      | Delete selected items   |
-| `a`      | Create a new folder     |
-| `c`      | Rename a file or folder |
-| `?`      | Toggle this help screen |
+ | Key        | Action                          |
+ | ---------- | -------------------------       |
+ | `h`        | Go to parent folder             |
+ | `l`        | Go into folder                  |
+ | `j`        | Move down the list              |
+ | `k`        | Move up the list                |
+ | `Enter`    | Open file/folder                |
+ | `Space`    | Select / unselect files/folders |
+ | `x`        | Cut selected items              |
+ | `y`        | Copy selected items             |
+ | `p`        | Paste items                     |
+ | `d`        | Delete selected items           |
+ | `a`        | Create a new folder             |
+ | `c`        | Rename a file or folder         |
+ | `r`        | Refresh directory               |
+ | `?`        | Toggle this help screen         |
 
 ## Installation
 
@@ -70,4 +71,3 @@ Contributions are welcome! Feel free to open issues or submit pull requests.
 ## License
 
 MIT License © Mahadevan K
-

@@ -32,7 +32,7 @@ endfunction
 
 function! s:refresh_dir()
   let b:current_dir = fnamemodify(b:current_dir, ':p')
-  let b:current_dir = substitute(b:current_dir, '/', '\\', 'g')
+  let b:current_dir = substitute(b:current_dir, '/', '\', 'g')
   let l:files = glob(b:current_dir . '\*', 0, 1)
   let l:lines = []
 
@@ -41,6 +41,8 @@ function! s:refresh_dir()
   if fnamemodify(b:current_dir, ':h') !=# b:current_dir
     call add(l:lines,'^ ..')
   endif
+  call add(l:lines,'> ' . b:current_dir)
+
   for f in l:files
     let l:perm = getfperm(f)
     let l:size = getfsize(f)
@@ -49,20 +51,36 @@ function! s:refresh_dir()
     else
       let l:size_str = s:human_readable_size(l:size)
     endif
-    let l:ftypechar = isdirectory(f) ? '\' : ''
     let l:name = fnamemodify(f, ':t')
+    let l:ftypechar = isdirectory(f) ? '\' : ''
     call add(l:lines, printf('%s %8s %s%s', l:perm, l:size_str, l:name, l:ftypechar))
   endfor
 
   %delete _
   call setline(1, l:lines)
-  call cursor(1, 1)
+  if !exists('b:last_dir_name') || empty(b:last_dir_name)
+    call cursor(1, 1)
+  endif
   setlocal buftype=nofile
   setlocal bufhidden=wipe
   setlocal noswapfile
   setlocal nowrap
   setlocal nomodifiable
   echo 'type ? for help'
+
+  if exists('b:last_dir_name') && !empty(b:last_dir_name) && exists('b:is_going_up') && b:is_going_up
+    let l:found = 0
+    for l:lnum in range(3, line('$'))
+      let l:line = getline(l:lnum)
+      if l:line =~ '^.* ' . escape(b:last_dir_name, '\/') . '\\$'
+        call cursor(l:lnum, 1)
+        let l:found = 1
+        break
+      endif
+    endfor
+    unlet b:last_dir_name
+    unlet b:is_going_up
+  endif
 endfunction
 
 command! VimNC call s:open_file_manager()
@@ -73,9 +91,8 @@ function! s:show_help()
   setlocal buftype=nofile
   setlocal bufhidden=hide
   setlocal noswapfile
-  setlocal filetype=helptext " custom filetype not used by file manager
+  setlocal filetype=helptext
 
-  " Insert your help text
   call append(0, [
         \ 'Vim File Manager Help:',
         \ '',
@@ -88,6 +105,7 @@ function! s:show_help()
         \ '  d       - delete selection',
         \ '  a       - create folder',
         \ '  c       - rename',
+        \ '  r       - refresh directory',
         \ '  ?       - Toggle help'
         \ ])
   normal! gg
@@ -110,7 +128,6 @@ function! s:open_file_manager()
   let b:yank_buffer = []
   let b:cut_buffer = []
 
-
   call s:refresh_dir()
 
   nnoremap <buffer> j j
@@ -127,32 +144,40 @@ function! s:open_file_manager()
   nnoremap <buffer> c :call <SID>rename()<CR>
   nnoremap <buffer> ? :call <SID>show_help()<CR>
   nnoremap <buffer> <CR> :call <SID>open_file()<CR>
+  nnoremap <buffer> r :call <SID>refresh_dir()<CR>
 endfunction
 
 function! s:join_path(dir, file)
-  " Convert all slashes to backslashes on Windows
   let l:dir = substitute(a:dir, '/', '\\', 'g')
   let l:file = substitute(a:file, '/', '\\', 'g')
   return substitute(l:dir, '\\\+$', '', '') . '\' . substitute(l:file, '^\\\+', '', '')
 endfunction
 
+function! s:get_last_dir_name(path)
+  let l:path = substitute(a:path, '\\\+$', '', '')
+  let l:parts = split(l:path, '\\')
+  return l:parts[-1]
+endfunction
+
 function! s:get_cursor_path()
   let l:line = getline('.')
-  if l:line =~ '^\^ \.\.$'  " Match exactly '^ ..'
+  if l:line =~ '^\^ \.\.$'
+    let l:current_name = s:get_last_dir_name(b:current_dir)
     let l:current_dir = substitute(b:current_dir, '\\\+$', '', '')
-    return substitute(l:current_dir, '\\[^\\]\+$', '', '')
+    let l:parent_dir = substitute(l:current_dir, '\\[^\\]\+$', '', '')
+    let b:last_dir_name = l:current_name
+    let b:is_going_up = 1
+    return l:parent_dir
   endif
   if l:line =~ '^>'
     return b:current_dir
   endif
   let l:parts = split(l:line)
-  let l:filename = substitute(join(l:parts[2:],' '),'[/\\]\+$','','')
+  let l:filename = substitute(join(l:parts[2:],' '),'[/\]\+$','','')
   let l:path = s:join_path(b:current_dir, l:filename)
   return fnamemodify(l:path, ':p')
 endfunction
 
-
-" Navigate into directory
 function! s:enter_dir()
   call s:clear_selection()
   let l:target = s:get_cursor_path()
@@ -162,16 +187,17 @@ function! s:enter_dir()
   endif
 endfunction
 
-" Go up to parent
 function! s:go_up()
   call s:clear_selection()
+  let l:current_name = s:get_last_dir_name(b:current_dir)
   let l:clean_dir = substitute(b:current_dir, '\\\+$', '', '')
   let l:parent_dir = substitute(l:clean_dir, '\\[^\\]\+$', '', '')
+  let b:last_dir_name = l:current_name
+  let b:is_going_up = 1
   let b:current_dir = l:parent_dir
   call s:refresh_dir()
 endfunction
 
-" Toggle selection
 function! s:toggle_select()
   let l:path = s:get_cursor_path()
   let l:lnum = line('.')
@@ -185,7 +211,6 @@ function! s:toggle_select()
   echo 'Selected: ' . len(keys(b:selection))
 endfunction
 
-" clear selection
 function! s:clear_selection()
   for key in keys(b:selection)
       call matchdelete(b:selection_matches[key])
@@ -194,7 +219,6 @@ function! s:clear_selection()
   let b:selection_matches = {}
 endfunction
 
-" Print selection
 function! s:print_files(files)
   if empty(a:files)
     echo "No files selected."
@@ -215,7 +239,6 @@ function! s:print_buffers()
   call s:print_files(len(b:yank_buffer)==0 ? b:cut_buffer : b:yank_buffer)
 endfunction
 
-" Yank (copy)
 function! s:copy_selection()
   let b:yank_buffer = copy(keys(b:selection))
   let b:cut_buffer = []
@@ -234,7 +257,6 @@ function! s:clear_buffers()
 endfunction
 
 
-" Paste
 function! s:paste_selection()
   let l:buffer = !empty(b:cut_buffer) ? b:cut_buffer : b:yank_buffer
   let l:is_cut = !empty(b:cut_buffer)
@@ -243,59 +265,73 @@ function! s:paste_selection()
     echo "Nothing to paste"
     return
   endif
-  let l:path=substitute(l:buffer[0],'[/\\]\+$','','')
+  let l:path=substitute(l:buffer[0],'[/\]\+$','','')
   if l:path==s:join_path(b:current_dir,fnamemodify(l:path,':t'))
     echo "Nothing to do, same location!"
     return
   endif
 
-  call s:print_buffers()
   let l:op = l:is_cut ? "Move" : "Copy"
-  if confirm(l:op." here?", "&Yes\n&No", 2) != 1
+  let l:choice = input(l:op." here? (y/n): ")
+  if l:choice !~? '^y'
     return
   endif
-  let l:cmd = l:is_cut ? "mv" : "cp -r"
-  for file in l:buffer
-    if l:is_cut
-      call system(l:cmd.' '.shellescape(file).' '.shellescape(b:current_dir).' 2>&1')
-    else
-      call system(l:cmd.' '.shellescape(file).' '.shellescape(b:current_dir).' 2>&1')
-    endif
-  endfor
-  call s:clear_buffers()
-  call s:clear_selection()
-  call s:refresh_dir()
-  echo 'Pasted.'
+
+  execute "redraw!"
+
+  try
+    let l:cmd = l:is_cut ? "mv" : "cp -r"
+    for file in l:buffer
+      if l:is_cut
+        call system(l:cmd.' '.shellescape(file).' '.shellescape(b:current_dir).' 2>&1')
+      else
+        call system(l:cmd.' '.shellescape(file).' '.shellescape(b:current_dir).' 2>&1')
+      endif
+    endfor
+    call s:clear_buffers()
+    call s:clear_selection()
+    call s:refresh_dir()
+  catch
+    echohl ErrorMsg
+    echo "Failed to paste files."
+    echohl None
+  endtry
 endfunction
 
-" Delete
 function! s:delete_selection()
   if empty(b:selection)
     echo "Nothing to delete"
     return
   endif
-  call s:print_selection()
-  if confirm("Really delete selected files?", "&Yes\n&No", 2) != 1
+  
+  let l:choice = input("Really delete selected files? (y/n): ")
+  if l:choice !~? '^y'
     return
   endif
-  for file in keys(b:selection)
-    call delete(file, 'rf')
-  endfor
-  call s:clear_buffers()
-  call s:clear_selection()
-  call s:refresh_dir()
-  echo 'Deleted.'
+
+  execute "redraw!"
+
+  try
+    for file in keys(b:selection)
+      call delete(file, 'rf')
+    endfor
+    call s:clear_buffers()
+    call s:clear_selection()
+    call s:refresh_dir()
+  catch
+    echohl ErrorMsg
+    echo "Failed to delete selected files."
+    echohl None
+  endtry
 endfunction
 
-" mkdir
 function! s:create_folder()
   let l:folder_name = input('New folder name: ')
   if empty(l:folder_name)
-    echo "Cancelled: folder name empty."
     return
   endif
 
-  let l:new_path = b:current_dir . '\' . l:folder_name
+  let l:new_path = b:current_dir . '\\' . l:folder_name
 
   if isdirectory(l:new_path) || filereadable(l:new_path)
     echohl ErrorMsg
@@ -304,14 +340,15 @@ function! s:create_folder()
     return
   endif
 
-  if confirm("Create folder '".l:folder_name."'?", "&Yes\n&No", 2) != 1
-    echo "Cancelled."
+  let l:choice = input("Create folder '".l:folder_name."'? (y/n): ")
+  if l:choice !~? '^y'
     return
   endif
 
+  execute "redraw!"
+
   try
     call mkdir(l:new_path, "p")
-    echo "Folder '".l:folder_name."' created."
     call s:clear_selection()
     call s:refresh_dir()
   catch
@@ -321,16 +358,14 @@ function! s:create_folder()
   endtry
 endfunction
 
-" rename
 function! s:rename()
   let l:path = s:get_cursor_path()
   let l:file_name = input('New name: ')
   if empty(l:file_name)
-    echo "Cancelled: new name empty."
     return
   endif
 
-  let l:new_path = b:current_dir . '\' . l:file_name
+  let l:new_path = b:current_dir . '\\' . l:file_name
 
   if isdirectory(l:new_path) || filereadable(l:new_path)
     echohl ErrorMsg
@@ -339,14 +374,21 @@ function! s:rename()
     return
   endif
 
-  if confirm("Reanme '".l:path."' to '".l:new_path."'?", "&Yes\n&No", 2) != 1
-    echo "Cancelled."
+  " Get the original name for the prompt using s:get_last_dir_name
+  let l:original_name = s:get_last_dir_name(l:path)
+  if empty(l:original_name)
+    let l:original_name = l:path
+  endif
+
+  let l:choice = input("Rename '".l:original_name."' to '".l:file_name."'? (y/n): ")
+  if l:choice !~? '^y'
     return
   endif
 
+  execute "redraw!"
+
   try
     call rename(l:path,l:new_path)
-    echo "Renamed to '".l:new_path."'."
     call s:clear_selection()
     call s:refresh_dir()
   catch
@@ -356,8 +398,12 @@ function! s:rename()
   endtry
 endfunction
 
-" open file/folder
 function! s:open_file()
+  let l:line = getline('.')
+  if l:line =~ '^>'
+    return
+  endif
+  
   let l:path = s:get_cursor_path()
   if isdirectory(l:path)
     let b:current_dir = l:path
