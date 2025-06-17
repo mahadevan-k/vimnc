@@ -9,13 +9,19 @@ let g:loaded_vimnc = 1
 highlight VNCSelected ctermfg=yellow guifg=Yellow
 
 if has('win32') || has('win64') || has('win95') || has('win16')
-  let s:sep = '\\'
+  let s:sep = '\'
+  let s:rsep = '\\'
 else
   let s:sep = '/'
+  let s:rsep = '/'
 endif
 
+function s:get_linux_path(path)
+  return substitute(a:path, s:rsep, '/', 'g')
+endfunction
+
 function! s:get_os_path(path)
-  return substitute(a:path, '/', s:sep, 'g')
+  return substitute(a:path, '/', s:rsep, 'g')
 endfunction
 
 function s:trim_dir(path)
@@ -69,7 +75,7 @@ function! s:set_cursor_location()
 endfunction
 
 function! s:refresh_dir()
-  let b:current_dir = fnamemodify(b:current_dir, ':p')
+  let b:current_dir = s:get_linux_path(fnamemodify(b:current_dir, ':p'))
   let l:files = glob(s:join_path(b:current_dir,'/*'), 0, 1)
   let l:lines = []
 
@@ -145,7 +151,7 @@ endfunction
 function! s:open_file_manager()
   vnew
   setlocal filetype=vimnc
-  let b:current_dir = getcwd()
+  let b:current_dir = s:get_linux_path(getcwd())
   let b:selection = {}
   let b:selection_matches = {}
   let b:yank_buffer = []
@@ -205,7 +211,7 @@ function! s:go_up()
   call s:clear_selection()
   let l:clean_dir = s:trim_dir(b:current_dir)
   let l:parent_dir = fnamemodify(l:clean_dir, ':h')
-  let b:last_dir_name =fnamemodify(l:parent_dir,':t')
+  let b:last_dir_name =fnamemodify(l:clean_dir,':t')
   let b:is_going_up = 1
   let b:current_dir = l:parent_dir
   call s:refresh_dir()
