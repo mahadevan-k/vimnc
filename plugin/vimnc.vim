@@ -8,6 +8,24 @@ let g:loaded_vimnc = 1
 
 highlight VNCSelected ctermfg=yellow guifg=Yellow
 
+if has('win32') || has('win64') || has('win95') || has('win16')
+  let s:sep = '\\'
+else
+  let s:sep = '/'
+endif
+
+function! s:get_os_path(path)
+  return substitute(a:path, '/', s:sep, 'g')
+endfunction
+
+function s:trim_dir(path)
+  return substitute(a:path, '/\+$', '','') 
+endfunction
+
+function s:trim_file(path)
+  return substitute(a:path, '^/\+', '','') 
+endfunction
+
 function! s:human_readable_size(size)
   if a:size < 1024
     return a:size . 'B'
@@ -23,17 +41,36 @@ endfunction
 function! s:show_file_info()
   let l:path = s:get_cursor_path()
   if filereadable(l:path) || isdirectory(l:path)
-    let l:info = system('ls -ld ' . shellescape(l:path))
+    let l:info = system('ls -ld ' . shellescape(s:get_os_path(l:path)))
     echo substitute(l:info, '\n', '', '')
   else
     echo "Not a valid file or directory"
   endif
 endfunction
 
+function! s:set_cursor_location()
+  if !exists('b:last_dir_name') || empty(b:last_dir_name)
+    call cursor(1, 1)
+  endif
+
+  if exists('b:last_dir_name') && !empty(b:last_dir_name) && exists('b:is_going_up') && b:is_going_up
+    let l:found = 0
+    for l:lnum in range(3, line('$'))
+      let l:line = getline(l:lnum)
+      if l:line =~ '^.* ' . escape(b:last_dir_name . s:sep, '\/') . '$'
+        call cursor(l:lnum, 1)
+        let l:found = 1
+        break
+      endif
+    endfor
+    unlet b:last_dir_name
+    unlet b:is_going_up
+  endif
+endfunction
+
 function! s:refresh_dir()
   let b:current_dir = fnamemodify(b:current_dir, ':p')
-  let b:current_dir = substitute(b:current_dir, '/', '\', 'g')
-  let l:files = glob(b:current_dir . '\*', 0, 1)
+  let l:files = glob(s:join_path(b:current_dir,'/*'), 0, 1)
   let l:lines = []
 
   setlocal modifiable
@@ -41,7 +78,7 @@ function! s:refresh_dir()
   if fnamemodify(b:current_dir, ':h') !=# b:current_dir
     call add(l:lines,'^ ..')
   endif
-  call add(l:lines,'> ' . b:current_dir)
+  call add(l:lines,'> ' . s:get_os_path(b:current_dir))
 
   for f in l:files
     let l:perm = getfperm(f)
@@ -52,35 +89,21 @@ function! s:refresh_dir()
       let l:size_str = s:human_readable_size(l:size)
     endif
     let l:name = fnamemodify(f, ':t')
-    let l:ftypechar = isdirectory(f) ? '\' : ''
+    let l:ftypechar = isdirectory(f) ? s:sep : ''
     call add(l:lines, printf('%s %8s %s%s', l:perm, l:size_str, l:name, l:ftypechar))
   endfor
 
   %delete _
   call setline(1, l:lines)
-  if !exists('b:last_dir_name') || empty(b:last_dir_name)
-    call cursor(1, 1)
-  endif
   setlocal buftype=nofile
   setlocal bufhidden=wipe
   setlocal noswapfile
   setlocal nowrap
   setlocal nomodifiable
-  echo 'type ? for help'
 
-  if exists('b:last_dir_name') && !empty(b:last_dir_name) && exists('b:is_going_up') && b:is_going_up
-    let l:found = 0
-    for l:lnum in range(3, line('$'))
-      let l:line = getline(l:lnum)
-      if l:line =~ '^.* ' . escape(b:last_dir_name, '\/') . '\\$'
-        call cursor(l:lnum, 1)
-        let l:found = 1
-        break
-      endif
-    endfor
-    unlet b:last_dir_name
-    unlet b:is_going_up
-  endif
+  call s:set_cursor_location()
+
+  echo 'type ? for help'
 endfunction
 
 command! VimNC call s:open_file_manager()
@@ -148,24 +171,15 @@ function! s:open_file_manager()
 endfunction
 
 function! s:join_path(dir, file)
-  let l:dir = substitute(a:dir, '/', '\\', 'g')
-  let l:file = substitute(a:file, '/', '\\', 'g')
-  return substitute(l:dir, '\\\+$', '', '') . '\' . substitute(l:file, '^\\\+', '', '')
-endfunction
-
-function! s:get_last_dir_name(path)
-  let l:path = substitute(a:path, '\\\+$', '', '')
-  let l:parts = split(l:path, '\\')
-  return l:parts[-1]
+  return s:trim_dir(a:dir) . '/' . s:trim_file(a:file)
 endfunction
 
 function! s:get_cursor_path()
   let l:line = getline('.')
   if l:line =~ '^\^ \.\.$'
-    let l:current_name = s:get_last_dir_name(b:current_dir)
-    let l:current_dir = substitute(b:current_dir, '\\\+$', '', '')
-    let l:parent_dir = substitute(l:current_dir, '\\[^\\]\+$', '', '')
-    let b:last_dir_name = l:current_name
+    let l:current_dir = fnamemodify(trim_dir(b:current_dir))
+    let l:parent_dir = fnamemodify(l:current_dir, ':h')
+    let b:last_dir_name = fnamemodify(l:current_dir, ':t')
     let b:is_going_up = 1
     return l:parent_dir
   endif
@@ -173,7 +187,7 @@ function! s:get_cursor_path()
     return b:current_dir
   endif
   let l:parts = split(l:line)
-  let l:filename = substitute(join(l:parts[2:],' '),'[/\]\+$','','')
+  let l:filename = s:trim_dir(join(l:parts[2:],' '))
   let l:path = s:join_path(b:current_dir, l:filename)
   return fnamemodify(l:path, ':p')
 endfunction
@@ -189,10 +203,9 @@ endfunction
 
 function! s:go_up()
   call s:clear_selection()
-  let l:current_name = s:get_last_dir_name(b:current_dir)
-  let l:clean_dir = substitute(b:current_dir, '\\\+$', '', '')
-  let l:parent_dir = substitute(l:clean_dir, '\\[^\\]\+$', '', '')
-  let b:last_dir_name = l:current_name
+  let l:clean_dir = s:trim_dir(b:current_dir)
+  let l:parent_dir = fnamemodify(l:clean_dir, ':h')
+  let b:last_dir_name =fnamemodify(l:parent_dir,':t')
   let b:is_going_up = 1
   let b:current_dir = l:parent_dir
   call s:refresh_dir()
@@ -225,9 +238,9 @@ function! s:print_files(files)
     return
   endif
 
-  echo "Selected files:"
+  echom "Selected files:"
   for l:path in a:files
-    echo '  ' . l:path
+    echom '  ' . s:get_os_path(l:path)
   endfor
 endfunction
 
@@ -265,27 +278,29 @@ function! s:paste_selection()
     echo "Nothing to paste"
     return
   endif
-  let l:path=substitute(l:buffer[0],'[/\]\+$','','')
-  if l:path==s:join_path(b:current_dir,fnamemodify(l:path,':t'))
+
+  let l:path=s:trim_dir(l:buffer[0])
+  if l:path==s:join_path(b:current_dir, fnamemodify(l:path,':t'))
     echo "Nothing to do, same location!"
     return
   endif
 
+  call s:print_buffers()
   let l:op = l:is_cut ? "Move" : "Copy"
   let l:choice = input(l:op." here? (y/n): ")
   if l:choice !~? '^y'
     return
   endif
 
-  execute "redraw!"
+  redraw!
 
   try
     let l:cmd = l:is_cut ? "mv" : "cp -r"
     for file in l:buffer
       if l:is_cut
-        call system(l:cmd.' '.shellescape(file).' '.shellescape(b:current_dir).' 2>&1')
+        call system(l:cmd.' '.shellescape(s:get_os_path(file)).' '.shellescape(s:get_os_path(b:current_dir)).' 2>&1')
       else
-        call system(l:cmd.' '.shellescape(file).' '.shellescape(b:current_dir).' 2>&1')
+        call system(l:cmd.' '.shellescape(s:get_os_path(file)).' '.shellescape(s:get_os_path(b:current_dir)).' 2>&1')
       endif
     endfor
     call s:clear_buffers()
@@ -304,12 +319,13 @@ function! s:delete_selection()
     return
   endif
   
+  call s:print_selection()
   let l:choice = input("Really delete selected files? (y/n): ")
   if l:choice !~? '^y'
     return
   endif
 
-  execute "redraw!"
+  redraw!
 
   try
     for file in keys(b:selection)
@@ -331,7 +347,7 @@ function! s:create_folder()
     return
   endif
 
-  let l:new_path = b:current_dir . '\\' . l:folder_name
+  let l:new_path = s:join_path(b:current_dir, l:folder_name)
 
   if isdirectory(l:new_path) || filereadable(l:new_path)
     echohl ErrorMsg
@@ -365,7 +381,7 @@ function! s:rename()
     return
   endif
 
-  let l:new_path = b:current_dir . '\\' . l:file_name
+  let l:new_path = s:join_path(b:current_dir, l:file_name)
 
   if isdirectory(l:new_path) || filereadable(l:new_path)
     echohl ErrorMsg
@@ -374,8 +390,7 @@ function! s:rename()
     return
   endif
 
-  " Get the original name for the prompt using s:get_last_dir_name
-  let l:original_name = s:get_last_dir_name(l:path)
+  let l:original_name = fnamemodify(l:path, ':t')
   if empty(l:original_name)
     let l:original_name = l:path
   endif
