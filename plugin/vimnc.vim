@@ -1,5 +1,6 @@
 " File: ~/.vim/plugin/vfm.vim
 "
+" show hidden files
 if exists("g:loaded_vfm")
   finish
 endif
@@ -32,7 +33,7 @@ endfunction
 
 function! s:refresh_dir()
   let b:current_dir = fnamemodify(b:current_dir, ':p')
-  let l:files = glob(s:join_path(b:current_dir,'/*'), 0, 1)
+  let l:files = glob(s:join_path(b:current_dir,'/{*,.*}'), 0, 1)
   let l:lines = []
 
   setlocal modifiable
@@ -52,7 +53,7 @@ function! s:refresh_dir()
     if isdirectory(f)
       let l:ftypechar='/'
     endif
-    let l:name = fnamemodify(f, ':t')
+    let l:name = fnamemodify(substitute(f,'/\+$','',''), ':t')
     call add(l:lines, printf('%s %8s %s%s', l:perm, l:size_str, l:name, l:ftypechar))
   endfor
 
