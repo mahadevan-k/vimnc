@@ -5,7 +5,6 @@ if exists("g:loaded_vimnc")
 endif
 let g:loaded_vimnc = 1
 
-
 highlight VNCSelected ctermfg=yellow guifg=Yellow
 
 if has('win32') || has('win64') || has('win95') || has('win16')
@@ -25,11 +24,11 @@ function! s:get_os_path(path)
 endfunction
 
 function s:trim_dir(path)
-  return substitute(a:path, '/\+$', '','') 
+  return substitute(a:path, '/\+$', '','')
 endfunction
 
 function s:trim_file(path)
-  return substitute(a:path, '^/\+', '','') 
+  return substitute(a:path, '^/\+', '','')
 endfunction
 
 function! s:human_readable_size(size)
@@ -77,6 +76,9 @@ endfunction
 function! s:refresh_dir()
   let b:current_dir = s:get_linux_path(fnamemodify(b:current_dir, ':p'))
   let l:files = glob(s:join_path(b:current_dir,'/*'), 0, 1)
+  let l:hidden_files = glob(s:join_path(b:current_dir,'/.*'), 0, 1)
+  let l:hidden_files = filter(l:hidden_files, 'v:val !~ "[/\\\\]\\.\\{1,2}$"')
+  let l:files = l:files + l:hidden_files
   let l:lines = []
 
   setlocal modifiable
@@ -146,7 +148,6 @@ function! s:leave_buffer()
   call s:copy_selection()
   call s:refresh_dir()
 endfunction
-
 
 function! s:open_file_manager()
   vnew
@@ -275,7 +276,6 @@ function! s:clear_buffers()
   let b:cut_buffer=[]
 endfunction
 
-
 function! s:paste_selection()
   let l:buffer = !empty(b:cut_buffer) ? b:cut_buffer : b:yank_buffer
   let l:is_cut = !empty(b:cut_buffer)
@@ -345,7 +345,7 @@ function! s:delete_selection()
     echo "Nothing to delete"
     return
   endif
-  
+
   call s:print_selection()
   let l:choice = input("Really delete selected files? (y/n): ")
   if l:choice !~? '^y'
@@ -445,7 +445,7 @@ function! s:open_file()
   if l:line =~ '^>'
     return
   endif
-  
+
   let l:path = s:get_cursor_path()
   if isdirectory(l:path)
     let b:current_dir = l:path
