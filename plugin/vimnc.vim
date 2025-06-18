@@ -183,7 +183,7 @@ endfunction
 function! s:get_cursor_path()
   let l:line = getline('.')
   if l:line =~ '^\^ \.\.$'
-    let l:current_dir = fnamemodify(trim_dir(b:current_dir))
+    let l:current_dir = s:trim_dir(b:current_dir)
     let l:parent_dir = fnamemodify(l:current_dir, ':h')
     let b:last_dir_name = fnamemodify(l:current_dir, ':t')
     let b:is_going_up = 1
@@ -193,7 +193,7 @@ function! s:get_cursor_path()
     return b:current_dir
   endif
   let l:parts = split(l:line)
-  let l:filename = s:trim_dir(join(l:parts[2:],' '))
+  let l:filename = s:trim_dir(join(l:parts[2:], ' '))
   let l:path = s:join_path(b:current_dir, l:filename)
   return fnamemodify(l:path, ':p')
 endfunction
