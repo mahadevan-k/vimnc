@@ -301,14 +301,35 @@ function! s:paste_selection()
   redraw!
 
   try
-    let l:cmd = l:is_cut ? "mv" : "cp -r"
-    for file in l:buffer
-      if l:is_cut
+    if has('win32') || has('win64') || has('win95') || has('win16')
+      for file in l:buffer
+        let l:target = s:join_path(b:current_dir, fnamemodify(file, ':t'))
+        if l:is_cut
+          let l:cmd = 'powershell -Command "Move-Item -Force -Path ' . shellescape(file) . ' -Destination ' . shellescape(l:target) . '"'
+          let l:ret = system(l:cmd)
+          if v:shell_error != 0
+            let l:cmd = 'move /Y ' . shellescape(file) . ' ' . shellescape(l:target)
+            call system(l:cmd)
+          endif
+        else
+          let l:cmd = 'powershell -Command "Copy-Item -Recurse -Force -Path ' . shellescape(file) . ' -Destination ' . shellescape(l:target) . '"'
+          let l:ret = system(l:cmd)
+          if v:shell_error != 0
+            if isdirectory(file)
+              let l:cmd = 'xcopy /E /I /Y ' . shellescape(file) . ' ' . shellescape(l:target)
+            else
+              let l:cmd = 'copy /Y ' . shellescape(file) . ' ' . shellescape(l:target)
+            endif
+            call system(l:cmd)
+          endif
+        endif
+      endfor
+    else
+      let l:cmd = l:is_cut ? "mv" : "cp -r"
+      for file in l:buffer
         call system(l:cmd.' '.shellescape(s:get_os_path(file)).' '.shellescape(s:get_os_path(b:current_dir)).' 2>&1')
-      else
-        call system(l:cmd.' '.shellescape(s:get_os_path(file)).' '.shellescape(s:get_os_path(b:current_dir)).' 2>&1')
-      endif
-    endfor
+      endfor
+    endif
     call s:clear_buffers()
     call s:clear_selection()
     call s:refresh_dir()
