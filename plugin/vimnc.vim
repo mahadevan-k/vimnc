@@ -154,20 +154,20 @@ endfunction
 function! s:sort_files(f1, f2)
   let f1_is_dir = isdirectory(a:f1)
   let f2_is_dir = isdirectory(a:f2)
-  
+
   " Only mix files and directories when sorting by time
   if g:vimnc_sort_by != 'time' && f1_is_dir != f2_is_dir
     return f1_is_dir ? -1 : 1
   endif
-  
+
   let key1 = s:get_sort_key(a:f1)
   let key2 = s:get_sort_key(a:f2)
-  
+
   " For time and size, larger values should come first
   if g:vimnc_sort_by == 'time' || g:vimnc_sort_by == 'size'
     return key1 > key2 ? -1 : key1 < key2 ? 1 : 0
   endif
-  
+
   " For name and extension, use alphabetical order
   return key1 < key2 ? -1 : key1 > key2 ? 1 : 0
 endfunction
@@ -183,20 +183,19 @@ function! s:show_help()
   setlocal filetype=helptext
 
   call append(0, [
-        \ 'Vim File Manager Help:',
-        \ '',
-        \ '  h/j/k/l     - Navigate filesystem ',
-        \ '  Enter   - Open file',
-        \ '  Space   - select/unselect',
-        \ '  x       - cut selected',
-        \ '  y       - copy selected',
-        \ '  p       - paste',
-        \ '  d       - delete selection',
-        \ '  a       - create folder',
-        \ '  c       - rename',
-        \ '  r       - refresh directory',
-        \ '  s       - toggle sort (name/time/size/exten)',
-        \ '  ?       - Toggle help'
+        \ 'VimNC Help:',
+        \ '  h/j/k/l    - Navigate filesystem ',
+        \ '  Enter      - Open file',
+        \ '  Space      - select/unselect',
+        \ '  x          - cut selected',
+        \ '  y          - copy selected',
+        \ '  p          - paste',
+        \ '  d          - delete selection',
+        \ '  a          - create folder',
+        \ '  c          - rename',
+        \ '  r          - refresh directory',
+        \ '  s          - toggle sort (name/time/size/exten)',
+        \ '  ?          - Toggle help'
         \ ])
   normal! gg
   nnoremap <buffer> ? :close<CR>
