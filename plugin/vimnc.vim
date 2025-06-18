@@ -184,18 +184,21 @@ function! s:show_help()
 
   call append(0, [
         \ 'VimNC Help:',
-        \ '  h/j/k/l    - Navigate filesystem ',
-        \ '  Enter      - Open file',
-        \ '  Space      - select/unselect',
-        \ '  x          - cut selected',
-        \ '  y          - copy selected',
-        \ '  p          - paste',
-        \ '  d          - delete selection',
-        \ '  a          - create folder',
-        \ '  c          - rename',
-        \ '  r          - refresh directory',
-        \ '  s          - toggle sort (name/time/size/exten)',
-        \ '  ?          - Toggle help'
+        \ '  h      - Go to parent folder ',
+        \ '  l      - Go into folder ',
+        \ '  j      - Move down the list ',
+        \ '  k      - Move up the list ',
+        \ '  Enter  - Open file',
+        \ '  Space  - select/unselect',
+        \ '  x      - cut selected',
+        \ '  y      - copy selected',
+        \ '  p      - paste',
+        \ '  d      - delete selection',
+        \ '  a      - create folder',
+        \ '  c      - rename',
+        \ '  r      - refresh directory',
+        \ '  s      - toggle sort (name/time/size/exten)',
+        \ '  ?      - Toggle help'
         \ ])
   normal! gg
   nnoremap <buffer> ? :close<CR>
