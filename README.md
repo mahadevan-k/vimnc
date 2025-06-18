@@ -9,25 +9,27 @@ A simple and intuitive file manager plugin for Vim that allows you to navigate a
 - Select, cut, copy, paste, and delete files/folders
 - Create folders and rename files/folders
 - Toggle an in-editor help screen for quick reference
+- Sort files by name, time, size, or extension
 
 ## Keybindings
 
- | Key        | Action                          |
- | ---------- | -------------------------       |
- | `h`        | Go to parent folder             |
- | `l`        | Go into folder                  |
- | `j`        | Move down the list              |
- | `k`        | Move up the list                |
- | `Enter`    | Open file/folder                |
- | `Space`    | Select / unselect files/folders |
- | `x`        | Cut selected items              |
- | `y`        | Copy selected items             |
- | `p`        | Paste items                     |
- | `d`        | Delete selected items           |
- | `a`        | Create a new folder             |
- | `c`        | Rename a file or folder         |
- | `r`        | Refresh directory               |
- | `?`        | Toggle this help screen         |
+  | Key        | Action                             |
+  | ---------- | ---------------------------------- |
+  | `h`        | Go to parent folder                |
+  | `l`        | Go into folder                     |
+  | `j`        | Move down the list                 |
+  | `k`        | Move up the list                   |
+  | `Enter`    | Open file/folder                   |
+  | `Space`    | Select / unselect files/folders    |
+  | `x`        | Cut selected items                 |
+  | `y`        | Copy selected items                |
+  | `p`        | Paste items                        |
+  | `d`        | Delete selected items              |
+  | `a`        | Create a new folder                |
+  | `c`        | Rename a file or folder            |
+  | `r`        | Refresh directory                  |
+  | `s`        | Toggle sort (name/time/size/exten) |
+  | `?`        | Toggle this help screen            |
 
 ## Installation
 
