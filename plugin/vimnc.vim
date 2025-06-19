@@ -5,6 +5,8 @@ if exists("g:loaded_vimnc")
 endif
 let g:loaded_vimnc = 1
 
+" Sort options: name, time, size, exten
+
 highlight VNCSelected ctermfg=yellow guifg=Yellow
 
 if has('win32') || has('win64') || has('win95') || has('win16')
@@ -75,6 +77,27 @@ function! s:set_cursor_location()
   endif
 endfunction
 
+function! s:toggle_sort()
+  let sort_types = ['name', 'time', 'size', 'exten', 'none']
+  let current_index = index(sort_types, b:sort_by)
+  let next_index = (current_index + 1) % len(sort_types)
+  let b:sort_by = sort_types[next_index]
+  call s:refresh_dir()
+  echo 'Sort by: ' . b:sort_by
+endfunction
+
+function! s:get_sort_key(file)
+  if b:sort_by == 'name'
+    return tolower(fnamemodify(a:file, ':t'))
+  elseif b:sort_by == 'time'
+    return getftime(a:file)
+  elseif b:sort_by == 'size'
+    return getfsize(a:file)
+  elseif b:sort_by == 'exten'
+    return tolower(fnamemodify(a:file, ':e'))
+  endif
+endfunction
+
 function! s:refresh_dir()
   let b:current_dir = s:get_linux_path(fnamemodify(b:current_dir, ':p'))
   let l:files = glob(s:join_path(b:current_dir,'/*'), 0, 1)
@@ -90,6 +113,11 @@ function! s:refresh_dir()
   endif
   call add(l:lines,'> ' . s:get_os_path(b:current_dir))
 
+  " Sort files based on current sort type
+  if b:sort_by != 'none'
+    let l:files = sort(l:files, function('s:sort_files'))
+  endif
+
   for f in l:files
     let l:perm = getfperm(f)
     let l:size = getfsize(f)
@@ -103,8 +131,13 @@ function! s:refresh_dir()
     call add(l:lines, printf('%s %8s %s%s', l:perm, l:size_str, l:name, l:ftypechar))
   endfor
 
-  %delete _
+  " Clear and set buffer content
+  silent! %delete _
   call setline(1, l:lines)
+  if empty(l:lines)
+    call setline(1, '')
+  endif
+
   setlocal buftype=nofile
   setlocal bufhidden=wipe
   setlocal noswapfile
@@ -113,7 +146,27 @@ function! s:refresh_dir()
 
   call s:set_cursor_location()
 
-  echo 'type ? for help'
+endfunction
+
+function! s:sort_files(f1, f2)
+  let f1_is_dir = isdirectory(a:f1)
+  let f2_is_dir = isdirectory(a:f2)
+
+  " Only mix files and directories when sorting by time
+  if b:sort_by != 'time' && f1_is_dir != f2_is_dir
+    return f1_is_dir ? -1 : 1
+  endif
+
+  let key1 = s:get_sort_key(a:f1)
+  let key2 = s:get_sort_key(a:f2)
+
+  " For time and size, larger values should come first
+  if b:sort_by == 'time' || b:sort_by == 'size'
+    return key1 > key2 ? -1 : key1 < key2 ? 1 : 0
+  endif
+
+  " For name and extension, use alphabetical order
+  return key1 < key2 ? -1 : key1 > key2 ? 1 : 0
 endfunction
 
 command! VimNC call s:open_file_manager()
@@ -127,19 +180,22 @@ function! s:show_help()
   setlocal filetype=helptext
 
   call append(0, [
-        \ 'Vim File Manager Help:',
-        \ '',
-        \ '  h/j/k/l     - Navigate filesystem ',
-        \ '  Enter   - Open file',
-        \ '  Space   - select/unselect',
-        \ '  x       - cut selected',
-        \ '  y       - copy selected',
-        \ '  p       - paste',
-        \ '  d       - delete selection',
-        \ '  a       - create folder',
-        \ '  c       - rename',
-        \ '  r       - refresh directory',
-        \ '  ?       - Toggle help'
+        \ 'VimNC Help:',
+        \ '  h      - Go to parent folder ',
+        \ '  l      - Go into folder ',
+        \ '  j      - Move down the list ',
+        \ '  k      - Move up the list ',
+        \ '  Enter  - Open file',
+        \ '  Space  - select/unselect',
+        \ '  x      - cut selected',
+        \ '  y      - copy selected',
+        \ '  p      - paste',
+        \ '  d      - delete selection',
+        \ '  a      - create folder',
+        \ '  c      - rename',
+        \ '  r      - refresh directory',
+        \ '  s      - toggle sort (name/time/size/exten)',
+        \ '  ?      - Toggle help'
         \ ])
   normal! gg
   nnoremap <buffer> ? :close<CR>
@@ -159,6 +215,7 @@ function! s:open_file_manager()
   let b:selection_matches = {}
   let b:yank_buffer = []
   let b:cut_buffer = []
+  let b:sort_by = 'name'
 
   call s:refresh_dir()
 
@@ -177,6 +234,9 @@ function! s:open_file_manager()
   nnoremap <buffer> ? :call <SID>show_help()<CR>
   nnoremap <buffer> <CR> :call <SID>open_file()<CR>
   nnoremap <buffer> r :call <SID>refresh_dir()<CR>
+  nnoremap <buffer> s :call <SID>toggle_sort()<CR>
+
+  echo 'type ? for help'
 endfunction
 
 function! s:join_path(dir, file)
@@ -336,7 +396,7 @@ function! s:paste_selection()
 
   redraw!
 
-  " try
+  try
     if l:is_cut
       call s:move_files(l:buffer)
     else
@@ -345,11 +405,11 @@ function! s:paste_selection()
     call s:clear_buffers()
     call s:clear_selection()
     call s:refresh_dir()
-  " catch
-  "   echohl ErrorMsg
-  "   echo "Failed to paste files."
-  "   echohl None
-  " endtry
+  catch
+    echohl ErrorMsg
+    echo "Failed to paste files."
+    echohl None
+  endtry
 endfunction
 
 function! s:delete_selection()
@@ -363,8 +423,6 @@ function! s:delete_selection()
   if l:choice !~? '^y'
     return
   endif
-
-  redraw!
 
   try
     for file in keys(b:selection)
@@ -399,8 +457,6 @@ function! s:create_folder()
   if l:choice !~? '^y'
     return
   endif
-
-  execute "redraw!"
 
   try
     call mkdir(l:new_path, "p")
@@ -438,8 +494,6 @@ function! s:rename()
   if l:choice !~? '^y'
     return
   endif
-
-  execute "redraw!"
 
   try
     call rename(l:path,l:new_path)

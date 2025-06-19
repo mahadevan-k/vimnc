@@ -14,6 +14,7 @@ FEATURES                                                           *vimnc-featur
 - Select, cut, copy, paste, and delete files/folders
 - Create folders and rename files/folders
 - Toggle an in-editor help screen for quick reference
+- Sort files by name, time, size, or extension
 
 ==============================================================================
 KEYBINDINGS                                                        *vimnc-keybindings*
@@ -30,6 +31,7 @@ The following keys are used within VimNC:
   a                  Create a new folder
   c                  Rename a file or folder
   r                  Refresh directory
+  s                  Toggle sort (name/time/size/exten)
   ?                  Toggle this help screen
 
 ==============================================================================
