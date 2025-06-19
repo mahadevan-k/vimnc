@@ -6,14 +6,15 @@ endif
 let g:loaded_vimnc = 1
 
 " Sort options: name, time, size, exten
-let g:vimnc_sort_by = 'name'
 
 highlight VNCSelected ctermfg=yellow guifg=Yellow
 
 if has('win32') || has('win64') || has('win95') || has('win16')
+  let s:windows = 1
   let s:sep = '\'
   let s:rsep = '\\'
 else
+  let s:windows = 0
   let s:sep = '/'
   let s:rsep = '/'
 endif
@@ -77,24 +78,22 @@ function! s:set_cursor_location()
 endfunction
 
 function! s:toggle_sort()
-  let sort_types = ['name', 'time', 'size', 'exten']
-  let current_index = index(sort_types, g:vimnc_sort_by)
+  let sort_types = ['name', 'time', 'size', 'exten', 'none']
+  let current_index = index(sort_types, b:sort_by)
   let next_index = (current_index + 1) % len(sort_types)
-  let g:vimnc_sort_by = sort_types[next_index]
-  let s:is_toggling_sort = 1
+  let b:sort_by = sort_types[next_index]
   call s:refresh_dir()
-  unlet s:is_toggling_sort
-  echo 'Sort by: ' . g:vimnc_sort_by
+  echo 'Sort by: ' . b:sort_by
 endfunction
 
 function! s:get_sort_key(file)
-  if g:vimnc_sort_by == 'name'
+  if b:sort_by == 'name'
     return tolower(fnamemodify(a:file, ':t'))
-  elseif g:vimnc_sort_by == 'time'
+  elseif b:sort_by == 'time'
     return getftime(a:file)
-  elseif g:vimnc_sort_by == 'size'
+  elseif b:sort_by == 'size'
     return getfsize(a:file)
-  elseif g:vimnc_sort_by == 'exten'
+  elseif b:sort_by == 'exten'
     return tolower(fnamemodify(a:file, ':e'))
   endif
 endfunction
@@ -103,7 +102,7 @@ function! s:refresh_dir()
   let b:current_dir = s:get_linux_path(fnamemodify(b:current_dir, ':p'))
   let l:files = glob(s:join_path(b:current_dir,'/*'), 0, 1)
   let l:hidden_files = glob(s:join_path(b:current_dir,'/.*'), 0, 1)
-  let l:hidden_files = filter(l:hidden_files, 'v:val !~ "[/\\\\]\\.\\{1,2}$"')
+  let l:hidden_files = filter(l:hidden_files, 's:get_linux_path(v:val) !~ "/\\\.\\{1,2}$"')
   let l:files = l:files + l:hidden_files
   let l:lines = []
 
@@ -115,7 +114,9 @@ function! s:refresh_dir()
   call add(l:lines,'> ' . s:get_os_path(b:current_dir))
 
   " Sort files based on current sort type
-  let l:files = sort(l:files, function('s:sort_files'))
+  if b:sort_by != 'none'
+    let l:files = sort(l:files, function('s:sort_files'))
+  endif
 
   for f in l:files
     let l:perm = getfperm(f)
@@ -145,10 +146,6 @@ function! s:refresh_dir()
 
   call s:set_cursor_location()
 
-  " Only show help message if not called from toggle_sort
-  if !exists('s:is_toggling_sort')
-    echo 'type ? for help'
-  endif
 endfunction
 
 function! s:sort_files(f1, f2)
@@ -156,7 +153,7 @@ function! s:sort_files(f1, f2)
   let f2_is_dir = isdirectory(a:f2)
 
   " Only mix files and directories when sorting by time
-  if g:vimnc_sort_by != 'time' && f1_is_dir != f2_is_dir
+  if b:sort_by != 'time' && f1_is_dir != f2_is_dir
     return f1_is_dir ? -1 : 1
   endif
 
@@ -164,7 +161,7 @@ function! s:sort_files(f1, f2)
   let key2 = s:get_sort_key(a:f2)
 
   " For time and size, larger values should come first
-  if g:vimnc_sort_by == 'time' || g:vimnc_sort_by == 'size'
+  if b:sort_by == 'time' || b:sort_by == 'size'
     return key1 > key2 ? -1 : key1 < key2 ? 1 : 0
   endif
 
@@ -218,6 +215,7 @@ function! s:open_file_manager()
   let b:selection_matches = {}
   let b:yank_buffer = []
   let b:cut_buffer = []
+  let b:sort_by = 'name'
 
   call s:refresh_dir()
 
@@ -237,6 +235,8 @@ function! s:open_file_manager()
   nnoremap <buffer> <CR> :call <SID>open_file()<CR>
   nnoremap <buffer> r :call <SID>refresh_dir()<CR>
   nnoremap <buffer> s :call <SID>toggle_sort()<CR>
+
+  echo 'type ? for help'
 endfunction
 
 function! s:join_path(dir, file)
@@ -338,6 +338,40 @@ function! s:clear_buffers()
   let b:cut_buffer=[]
 endfunction
 
+function! s:copy_files(files)
+  for file in a:files
+    if s:windows
+      let l:cmd = 'powershell -Command "Copy-Item -Recurse -Force -Path ' . shellescape(s:get_os_path(file)) . ' -Destination ' . shellescape(s:get_os_path(l:target)) . '"'
+      let l:ret = system(l:cmd)
+      if v:shell_error != 0
+        if isdirectory(file)
+          let l:cmd = 'xcopy /E /I /Y ' . shellescape(s:get_os_path(file)) . ' ' . shellescape(s:get_os_path(l:target))
+        else
+          let l:cmd = 'copy /Y ' . shellescape(s:get_os_path(file)) . ' ' . shellescape(s:get_os_path(l:target))
+        endif
+        call system(l:cmd)
+      endif
+    else
+      call system('cp -r '.shellescape(s:get_os_path(file)).' '.shellescape(s:get_os_path(b:current_dir)).' 2>&1')
+    endif
+  endfor
+endfunction
+
+function! s:move_files(files)
+  for file in a:files
+    if s:windows
+      let l:cmd = 'powershell -Command "Move-Item -Force -Path ' . shellescape(s:get_os_path(file)) . ' -Destination ' . shellescape(s:get_os_path(l:target)) . '"'
+      let l:ret = system(l:cmd)
+      if v:shell_error != 0
+        let l:cmd = 'move /Y ' . shellescape(s:get_os_path(file)) . ' ' . shellescape(s:get_os_path(l:target))
+        call system(l:cmd)
+      endif
+    else
+      call system('mv '.shellescape(s:get_os_path(file)).' '.shellescape(s:get_os_path(b:current_dir)).' 2>&1')
+    endif
+  endfor
+endfunction
+
 function! s:paste_selection()
   let l:buffer = !empty(b:cut_buffer) ? b:cut_buffer : b:yank_buffer
   let l:is_cut = !empty(b:cut_buffer)
@@ -360,35 +394,13 @@ function! s:paste_selection()
     return
   endif
 
+  redraw!
+
   try
-    if has('win32') || has('win64') || has('win95') || has('win16')
-      for file in l:buffer
-        let l:target = s:join_path(b:current_dir, fnamemodify(file, ':t'))
-        if l:is_cut
-          let l:cmd = 'powershell -Command "Move-Item -Force -Path ' . shellescape(file) . ' -Destination ' . shellescape(l:target) . '"'
-          let l:ret = system(l:cmd)
-          if v:shell_error != 0
-            let l:cmd = 'move /Y ' . shellescape(file) . ' ' . shellescape(l:target)
-            call system(l:cmd)
-          endif
-        else
-          let l:cmd = 'powershell -Command "Copy-Item -Recurse -Force -Path ' . shellescape(file) . ' -Destination ' . shellescape(l:target) . '"'
-          let l:ret = system(l:cmd)
-          if v:shell_error != 0
-            if isdirectory(file)
-              let l:cmd = 'xcopy /E /I /Y ' . shellescape(file) . ' ' . shellescape(l:target)
-            else
-              let l:cmd = 'copy /Y ' . shellescape(file) . ' ' . shellescape(l:target)
-            endif
-            call system(l:cmd)
-          endif
-        endif
-      endfor
+    if l:is_cut
+      call s:move_files(l:buffer)
     else
-      let l:cmd = l:is_cut ? "mv" : "cp -r"
-      for file in l:buffer
-        call system(l:cmd.' '.shellescape(s:get_os_path(file)).' '.shellescape(s:get_os_path(b:current_dir)).' 2>&1')
-      endfor
+      call s:copy_files(l:buffer)
     endif
     call s:clear_buffers()
     call s:clear_selection()
