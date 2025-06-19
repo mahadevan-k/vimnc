@@ -8,9 +8,11 @@ let g:loaded_vimnc = 1
 highlight VNCSelected ctermfg=yellow guifg=Yellow
 
 if has('win32') || has('win64') || has('win95') || has('win16')
+  let s:windows = 1
   let s:sep = '\'
   let s:rsep = '\\'
 else
+  let s:windows = 0
   let s:sep = '/'
   let s:rsep = '/'
 endif
@@ -77,7 +79,7 @@ function! s:refresh_dir()
   let b:current_dir = s:get_linux_path(fnamemodify(b:current_dir, ':p'))
   let l:files = glob(s:join_path(b:current_dir,'/*'), 0, 1)
   let l:hidden_files = glob(s:join_path(b:current_dir,'/.*'), 0, 1)
-  let l:hidden_files = filter(l:hidden_files, 'v:val !~ "[/\\\\]\\.\\{1,2}$"')
+  let l:hidden_files = filter(l:hidden_files, 's:get_linux_path(v:val) !~ "/\\\.\\{1,2}$"')
   let l:files = l:files + l:hidden_files
   let l:lines = []
 
@@ -276,6 +278,40 @@ function! s:clear_buffers()
   let b:cut_buffer=[]
 endfunction
 
+function! s:copy_files(files)
+  for file in a:files
+    if s:windows
+      let l:cmd = 'powershell -Command "Copy-Item -Recurse -Force -Path ' . shellescape(s:get_os_path(file)) . ' -Destination ' . shellescape(s:get_os_path(l:target)) . '"'
+      let l:ret = system(l:cmd)
+      if v:shell_error != 0
+        if isdirectory(file)
+          let l:cmd = 'xcopy /E /I /Y ' . shellescape(s:get_os_path(file)) . ' ' . shellescape(s:get_os_path(l:target))
+        else
+          let l:cmd = 'copy /Y ' . shellescape(s:get_os_path(file)) . ' ' . shellescape(s:get_os_path(l:target))
+        endif
+        call system(l:cmd)
+      endif
+    else
+      call system('cp -r '.shellescape(s:get_os_path(file)).' '.shellescape(s:get_os_path(b:current_dir)).' 2>&1')
+    endif
+  endfor
+endfunction
+
+function! s:move_files(files)
+  for file in a:files
+    if s:windows
+      let l:cmd = 'powershell -Command "Move-Item -Force -Path ' . shellescape(s:get_os_path(file)) . ' -Destination ' . shellescape(s:get_os_path(l:target)) . '"'
+      let l:ret = system(l:cmd)
+      if v:shell_error != 0
+        let l:cmd = 'move /Y ' . shellescape(s:get_os_path(file)) . ' ' . shellescape(s:get_os_path(l:target))
+        call system(l:cmd)
+      endif
+    else
+      call system('mv '.shellescape(s:get_os_path(file)).' '.shellescape(s:get_os_path(b:current_dir)).' 2>&1')
+    endif
+  endfor
+endfunction
+
 function! s:paste_selection()
   let l:buffer = !empty(b:cut_buffer) ? b:cut_buffer : b:yank_buffer
   let l:is_cut = !empty(b:cut_buffer)
@@ -300,44 +336,20 @@ function! s:paste_selection()
 
   redraw!
 
-  try
-    if has('win32') || has('win64') || has('win95') || has('win16')
-      for file in l:buffer
-        let l:target = s:join_path(b:current_dir, fnamemodify(file, ':t'))
-        if l:is_cut
-          let l:cmd = 'powershell -Command "Move-Item -Force -Path ' . shellescape(file) . ' -Destination ' . shellescape(l:target) . '"'
-          let l:ret = system(l:cmd)
-          if v:shell_error != 0
-            let l:cmd = 'move /Y ' . shellescape(file) . ' ' . shellescape(l:target)
-            call system(l:cmd)
-          endif
-        else
-          let l:cmd = 'powershell -Command "Copy-Item -Recurse -Force -Path ' . shellescape(file) . ' -Destination ' . shellescape(l:target) . '"'
-          let l:ret = system(l:cmd)
-          if v:shell_error != 0
-            if isdirectory(file)
-              let l:cmd = 'xcopy /E /I /Y ' . shellescape(file) . ' ' . shellescape(l:target)
-            else
-              let l:cmd = 'copy /Y ' . shellescape(file) . ' ' . shellescape(l:target)
-            endif
-            call system(l:cmd)
-          endif
-        endif
-      endfor
+  " try
+    if l:is_cut
+      call s:move_files(l:buffer)
     else
-      let l:cmd = l:is_cut ? "mv" : "cp -r"
-      for file in l:buffer
-        call system(l:cmd.' '.shellescape(s:get_os_path(file)).' '.shellescape(s:get_os_path(b:current_dir)).' 2>&1')
-      endfor
+      call s:copy_files(l:buffer)
     endif
     call s:clear_buffers()
     call s:clear_selection()
     call s:refresh_dir()
-  catch
-    echohl ErrorMsg
-    echo "Failed to paste files."
-    echohl None
-  endtry
+  " catch
+  "   echohl ErrorMsg
+  "   echo "Failed to paste files."
+  "   echohl None
+  " endtry
 endfunction
 
 function! s:delete_selection()
