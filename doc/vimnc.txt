@@ -21,18 +21,21 @@ KEYBINDINGS                                                        *vimnc-keybin
 
 The following keys are used within VimNC:
 
-  h / j / k / l      Navigate filesystem (left/down/up/right)
-  Enter              Open file
-  Space              Select / unselect files/folders
-  x                  Cut selected items
-  y                  Copy selected items
-  p                  Paste items
-  d                  Delete selected items
-  a                  Create a new folder
-  c                  Rename a file or folder
-  r                  Refresh directory
-  s                  Toggle sort (name/time/size/exten)
-  ?                  Toggle this help screen
+   `h`         Go to parent folder
+   `l`         Go into folder
+   `j`         Move down the list
+   `k`         Move up the list
+   `Enter`     Open file/folder
+   `Space`     Select / unselect files/folders
+   `x`         Cut selected items
+   `y`         Copy selected items
+   `p`         Paste items
+   `d`         Delete selected items
+   `a`         Create a new folder
+   `c`         Rename a file or folder
+   `r`         Refresh directory
+   `s`         Toggle sort (name/time/size/exten)
+   `?`         Toggle this help screen
 
 ==============================================================================
 INSTALLATION                                                       *vimnc-install*
