@@ -341,13 +341,13 @@ endfunction
 function! s:copy_files(files)
   for file in a:files
     if s:windows
-      let l:cmd = 'powershell -Command "Copy-Item -Recurse -Force -Path ' . shellescape(s:get_os_path(file)) . ' -Destination ' . shellescape(s:get_os_path(l:target)) . '"'
+      let l:cmd = 'powershell -Command "Copy-Item -Recurse -Force -Path ' . shellescape(s:get_os_path(file)) . ' -Destination ' . shellescape(s:get_os_path(b:current_dir)) . '"'
       let l:ret = system(l:cmd)
       if v:shell_error != 0
         if isdirectory(file)
-          let l:cmd = 'xcopy /E /I /Y ' . shellescape(s:get_os_path(file)) . ' ' . shellescape(s:get_os_path(l:target))
+          let l:cmd = 'xcopy /E /I /Y ' . shellescape(s:get_os_path(file)) . ' ' . shellescape(s:get_os_path(b:current_dir))
         else
-          let l:cmd = 'copy /Y ' . shellescape(s:get_os_path(file)) . ' ' . shellescape(s:get_os_path(l:target))
+          let l:cmd = 'copy /Y ' . shellescape(s:get_os_path(file)) . ' ' . shellescape(s:get_os_path(b:current_dir))
         endif
         call system(l:cmd)
       endif
@@ -360,10 +360,10 @@ endfunction
 function! s:move_files(files)
   for file in a:files
     if s:windows
-      let l:cmd = 'powershell -Command "Move-Item -Force -Path ' . shellescape(s:get_os_path(file)) . ' -Destination ' . shellescape(s:get_os_path(l:target)) . '"'
+      let l:cmd = 'powershell -Command "Move-Item -Force -Path ' . shellescape(s:get_os_path(file)) . ' -Destination ' . shellescape(s:get_os_path(b:current_dir)) . '"'
       let l:ret = system(l:cmd)
       if v:shell_error != 0
-        let l:cmd = 'move /Y ' . shellescape(s:get_os_path(file)) . ' ' . shellescape(s:get_os_path(l:target))
+        let l:cmd = 'move /Y ' . shellescape(s:get_os_path(file)) . ' ' . shellescape(s:get_os_path(b:current_dir))
         call system(l:cmd)
       endif
     else
